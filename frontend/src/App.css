@@ -1,0 +1,163 @@
+/* ============================================================
+   会议室预约管理系统 — Mock Server 验证面板样式
+   ============================================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f5f7fa;
+  color: #333;
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.app-header h1 {
+  font-size: 28px;
+  color: #1a1a2e;
+}
+
+.subtitle {
+  color: #666;
+  font-size: 14px;
+  margin-top: 6px;
+}
+
+.stats-bar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 20px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.stats-bar span {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.test-btn {
+  margin-left: auto;
+  padding: 10px 24px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.test-btn:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.test-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-card {
+  background: white;
+  border-radius: 8px;
+  padding: 14px 18px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border-left: 4px solid #e0e0e0;
+  transition: border-color 0.2s;
+}
+
+.result-card.success {
+  border-left-color: #22c55e;
+}
+
+.result-card.error {
+  border-left-color: #ef4444;
+}
+
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badge {
+  font-size: 16px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.test-name {
+  font-weight: 500;
+  font-size: 14px;
+  flex: 1;
+}
+
+.duration {
+  color: #999;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.result-data {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-radius: 6px;
+  font-size: 12px;
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  border: 1px solid #e2e8f0;
+}
+
+.result-error {
+  margin-top: 8px;
+  padding: 10px 14px;
+  background: #fef2f2;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.empty-state p {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.hint {
+  font-size: 13px !important;
+  color: #bbb;
+}

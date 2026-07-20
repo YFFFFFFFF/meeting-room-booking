@@ -1,0 +1,147 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.logo {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.header h1 {
+  font-size: 22px;
+  color: #1f2937;
+  margin: 0 0 8px;
+}
+
+.subtitle {
+  color: #9ca3af;
+  font-size: 14px;
+  margin: 0;
+}
+
+.error {
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.section {
+  margin-bottom: 24px;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.accountList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.accountBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.accountBtn:hover:not(:disabled) {
+  border-color: var(--accent, #6366f1);
+  background: #f5f3ff;
+  transform: translateX(4px);
+}
+
+.accountBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.accountAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.accountInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.accountName {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.accountRole {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.accountId {
+  font-size: 12px;
+  color: #d1d5db;
+  font-family: monospace;
+}
+
+.footer {
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.footer p {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.hint {
+  margin-top: 6px !important;
+  font-size: 12px !important;
+}

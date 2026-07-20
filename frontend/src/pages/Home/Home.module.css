@@ -1,0 +1,398 @@
+.page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px 24px;
+}
+
+/* ---- Top Bar ---- */
+
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.topLeft h1 {
+  margin: 0;
+  font-size: 22px;
+  color: #1f2937;
+}
+
+.userInfo {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.topRight {
+  display: flex;
+  gap: 8px;
+}
+
+.navBtn {
+  padding: 8px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.navBtn:hover { background: #f3f4f6; }
+
+/* ---- Filter Bar ---- */
+
+.filterBar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.dateInput {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+}
+
+.dateInput:focus { border-color: #4f46e5; }
+
+.searchInput {
+  padding: 8px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  min-width: 180px;
+}
+
+.searchInput:focus { border-color: #4f46e5; }
+
+.floorBtns, .equipBtns {
+  display: flex;
+  gap: 4px;
+}
+
+.filterBtn {
+  padding: 6px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.filterBtn:hover { border-color: #c7d2fe; background: #f5f3ff; }
+.filterBtn.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+
+/* ---- Timeline ---- */
+
+.timeline {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+
+.timelineHeader {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.roomLabel {
+  width: 140px;
+  min-width: 140px;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.timeSlots {
+  display: flex;
+  flex: 1;
+}
+
+.hourLabel {
+  flex: 2;
+  padding: 12px 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: #9ca3af;
+  border-left: 1px solid #f3f4f6;
+}
+
+/* ---- Room Rows ---- */
+
+.timelineBody {
+  overflow-x: auto;
+}
+
+.roomRow {
+  display: flex;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.1s;
+}
+
+.roomRow:hover { background: #fafbff; }
+
+.roomInfo {
+  width: 140px;
+  min-width: 140px;
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.roomInfo:hover { background: #f5f3ff; }
+
+.roomName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.roomMeta {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.equipIcons {
+  letter-spacing: 2px;
+}
+
+/* ---- Slots ---- */
+
+.slotRow {
+  display: flex;
+  flex: 1;
+}
+
+.slot {
+  flex: 1;
+  height: 44px;
+  border-left: 1px solid #f3f4f6;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+  position: relative;
+}
+
+.slot.free {
+  background: #f0fdf4;
+  cursor: pointer;
+}
+
+.slot.free:hover {
+  background: #22c55e;
+  opacity: 0.7;
+}
+
+.slot.occupied {
+  background: #fef2f2;
+  cursor: pointer;
+}
+
+.slot.occupied:hover {
+  background: #fecaca;
+}
+
+.slot.ongoing {
+  background: #fff7ed;
+}
+
+.slot.past {
+  background: #f9fafb;
+  cursor: default;
+}
+
+.slot.selected {
+  outline: 2px solid #4f46e5;
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.slotLabel {
+  font-size: 10px;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90%;
+}
+
+/* ---- Quick Book Bar ---- */
+
+.quickBookBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: white;
+  border-top: 2px solid #4f46e5;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+  z-index: 50;
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.quickBookInfo {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.quickBookInfo strong {
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.quickBookInfo span {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.quickBookActions {
+  display: flex;
+  gap: 10px;
+}
+
+.cancelBtn {
+  padding: 10px 24px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.bookBtn {
+  padding: 10px 28px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bookBtn:hover { background: #4338ca; }
+
+/* ---- Legend ---- */
+
+.legend {
+  display: flex;
+  gap: 20px;
+  padding: 12px 16px;
+  border-top: 1px solid #f3f4f6;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.legendDot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* ---- States ---- */
+
+.skeleton { padding: 20px; }
+
+.skeletonRow {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.skelName {
+  width: 120px;
+  height: 16px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+.skelSlots {
+  display: flex;
+  flex: 1;
+  gap: 2px;
+}
+
+.skelSlot {
+  flex: 1;
+  height: 36px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 3px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.error {
+  text-align: center;
+  padding: 60px 20px;
+  color: #dc2626;
+}
+
+.retryBtn {
+  padding: 8px 20px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #9ca3af;
+  font-size: 15px;
+}
+
+.clearFilterBtn {
+  padding: 8px 20px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  margin-top: 12px;
+}
