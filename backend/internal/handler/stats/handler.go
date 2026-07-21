@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -29,7 +30,6 @@ func (h *Handler) Dashboard(c *gin.Context) {
 	var todayBookings int64
 	h.db.Model(&model.Booking{}).Where("start_time >= ? AND start_time < ?", todayStart, todayStart.Add(24*time.Hour)).Count(&todayBookings)
 
-	// 当前占用
 	var occupiedCount int64
 	h.db.Model(&model.Booking{}).
 		Where("status IN ('confirmed','checked_in') AND start_time <= ? AND end_time > ?", now, now).
@@ -45,7 +45,6 @@ func (h *Handler) Dashboard(c *gin.Context) {
 		utilization = float64(occupiedCount) / float64(totalRooms) * 100
 	}
 
-	// 楼层统计
 	type FloorRow struct {
 		Floor string
 		Total int
@@ -69,23 +68,44 @@ func (h *Handler) Dashboard(c *gin.Context) {
 		}
 
 		floorStats = append(floorStats, model.FloorStat{
-			Floor:       f.Floor,
-			Total:       f.Total,
-			Occupied:    int(occupied),
-			Utilization: fUtil,
+			Floor: f.Floor, Total: f.Total, Occupied: int(occupied), Utilization: fUtil,
 		})
 	}
 
+	// 按类型统计
+	type TypeStat struct {
+		Type       string  `json:"type"`
+		Total      int     `json:"total"`
+		Occupied   int     `json:"occupied"`
+		Utilization float64 `json:"utilization"`
+	}
+	typeStats := make([]TypeStat, 0)
+	for _, rt := range []model.RoomType{model.RoomTypeSmall, model.RoomTypeMedium, model.RoomTypeLarge} {
+		var total int64
+		h.db.Model(&model.MeetingRoom{}).Where("status = 'active' AND room_type = ?", rt).Count(&total)
+		var occ int64
+		h.db.Model(&model.Booking{}).
+			Joins("JOIN meeting_rooms ON bookings.room_id = meeting_rooms.id").
+			Where("meeting_rooms.room_type = ? AND bookings.status IN ('confirmed','checked_in') AND bookings.start_time <= ? AND bookings.end_time > ?",
+				rt, now, now).
+			Distinct("bookings.room_id").Count(&occ)
+		u := 0.0
+		if total > 0 {
+			u = float64(occ) / float64(total) * 100
+		}
+		typeStats = append(typeStats, TypeStat{Type: string(rt), Total: int(total), Occupied: int(occ), Utilization: u})
+	}
+
 	c.JSON(http.StatusOK, model.ApiResponse{
-		Code:    0,
-		Message: "success",
-		Data: model.DashboardData{
-			TotalRooms:        int(totalRooms),
-			OccupiedRooms:     int(occupiedCount),
-			FreeRooms:         int(freeRooms),
-			TodayBookings:     todayBookings,
-			CurrentUtilization: utilization,
-			FloorStats:        floorStats,
+		Code:    0, Message: "success",
+		Data: map[string]interface{}{
+			"total_rooms":        totalRooms,
+			"occupied_rooms":     occupiedCount,
+			"free_rooms":         freeRooms,
+			"today_bookings":     todayBookings,
+			"current_utilization": utilization,
+			"floor_stats":        floorStats,
+			"type_stats":         typeStats,
 		},
 		RequestID: c.GetString("request_id"),
 	})
@@ -93,14 +113,28 @@ func (h *Handler) Dashboard(c *gin.Context) {
 
 // Utilization GET /api/stats/utilization
 func (h *Handler) Utilization(c *gin.Context) {
+	startDate := c.DefaultQuery("start_date", time.Now().AddDate(0, -1, 0).Format("2006-01-02"))
+	endDate := c.DefaultQuery("end_date", time.Now().Format("2006-01-02"))
+
+	startTime, _ := time.Parse("2006-01-02", startDate)
+	endTime, _ := time.Parse("2006-01-02", endDate)
+	endTime = endTime.Add(24 * time.Hour)
+
 	var rooms []model.MeetingRoom
 	h.db.Where("status = ?", "active").Find(&rooms)
 
 	reports := make([]model.UtilizationReport, 0, len(rooms))
 	for _, room := range rooms {
 		var total, cancelled int64
-		h.db.Model(&model.Booking{}).Where("room_id = ?", room.ID).Count(&total)
-		h.db.Model(&model.Booking{}).Where("room_id = ? AND status = 'cancelled'", room.ID).Count(&cancelled)
+		h.db.Model(&model.Booking{}).Where("room_id = ? AND start_time >= ? AND start_time < ?", room.ID, startTime, endTime).Count(&total)
+		h.db.Model(&model.Booking{}).Where("room_id = ? AND status = 'cancelled' AND start_time >= ? AND start_time < ?", room.ID, startTime, endTime).Count(&cancelled)
+
+		// 计算平均时长
+		var avgDuration float64
+		h.db.Model(&model.Booking{}).
+			Select("COALESCE(AVG(EXTRACT(EPOCH FROM end_time - start_time)/60), 0)").
+			Where("room_id = ? AND start_time >= ? AND start_time < ?", room.ID, startTime, endTime).
+			Scan(&avgDuration)
 
 		utilization := 0.0
 		if total > 0 {
@@ -108,17 +142,114 @@ func (h *Handler) Utilization(c *gin.Context) {
 		}
 
 		reports = append(reports, model.UtilizationReport{
-			RoomID:             room.ID,
-			RoomName:           room.Name,
-			UtilizationRate:    utilization,
-			TotalBookings:      total,
-			CancelledBookings:  cancelled,
-			AvgDurationMinutes: 45, // 默认值
+			RoomID: room.ID, RoomName: room.Name,
+			UtilizationRate: utilization, TotalBookings: total,
+			CancelledBookings: cancelled, AvgDurationMinutes: avgDuration,
 		})
 	}
 
 	c.JSON(http.StatusOK, model.ApiResponse{
 		Code: 0, Message: "success", Data: reports, RequestID: c.GetString("request_id"),
+	})
+}
+
+// Trend GET /api/stats/trend — 预约趋势（按天统计）
+func (h *Handler) Trend(c *gin.Context) {
+	days := 7
+	now := time.Now()
+	startDate := now.AddDate(0, 0, -days+1)
+	dayStart := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
+
+	type DayTrend struct {
+		Date    string `json:"date"`
+		Total   int64  `json:"total"`
+		Created int64  `json:"created"`
+		Cancelled int64 `json:"cancelled"`
+	}
+
+	trends := make([]DayTrend, 0, days)
+	for i := 0; i < days; i++ {
+		d := dayStart.AddDate(0, 0, i)
+		dEnd := d.Add(24 * time.Hour)
+		dateStr := d.Format("2006-01-02")
+
+		var total, created, cancelled int64
+		h.db.Model(&model.Booking{}).Where("start_time >= ? AND start_time < ?", d, dEnd).Count(&total)
+		h.db.Model(&model.Booking{}).Where("created_at >= ? AND created_at < ?", d, dEnd).Count(&created)
+		h.db.Model(&model.Booking{}).Where("status = 'cancelled' AND updated_at >= ? AND updated_at < ?", d, dEnd).Count(&cancelled)
+
+		trends = append(trends, DayTrend{Date: dateStr, Total: total, Created: created, Cancelled: cancelled})
+	}
+
+	c.JSON(http.StatusOK, model.ApiResponse{
+		Code: 0, Message: "success", Data: trends, RequestID: c.GetString("request_id"),
+	})
+}
+
+// HotRooms GET /api/stats/hot-rooms — 热门会议室排行
+func (h *Handler) HotRooms(c *gin.Context) {
+	startDate := c.DefaultQuery("start_date", time.Now().AddDate(0, -1, 0).Format("2006-01-02"))
+	endDate := c.DefaultQuery("end_date", time.Now().Format("2006-01-02"))
+	limit := 5
+
+	startTime, _ := time.Parse("2006-01-02", startDate)
+	endTime, _ := time.Parse("2006-01-02", endDate)
+	endTime = endTime.Add(24 * time.Hour)
+
+	type HotRoom struct {
+		RoomID          string  `json:"room_id"`
+		RoomName        string  `json:"room_name"`
+		Floor           string  `json:"floor"`
+		BookingCount    int64   `json:"booking_count"`
+		UtilizationRate float64 `json:"utilization_rate"`
+		TotalHours      float64 `json:"total_hours"`
+	}
+
+	var results []HotRoom
+	h.db.Model(&model.Booking{}).
+		Select("bookings.room_id, meeting_rooms.name as room_name, meeting_rooms.floor, count(*) as booking_count, COALESCE(SUM(EXTRACT(EPOCH FROM bookings.end_time - bookings.start_time)/3600), 0) as total_hours").
+		Joins("JOIN meeting_rooms ON bookings.room_id = meeting_rooms.id").
+		Where("bookings.start_time >= ? AND bookings.start_time < ? AND bookings.status != 'cancelled' AND bookings.status != 'released'",
+			startTime, endTime).
+		Group("bookings.room_id, meeting_rooms.name, meeting_rooms.floor").
+		Order("booking_count DESC").
+		Limit(limit).
+		Scan(&results)
+
+	// 计算利用率
+	totalHours := endTime.Sub(startTime).Hours()
+	for i := range results {
+		if totalHours > 0 {
+			results[i].UtilizationRate = results[i].TotalHours / totalHours * 100
+		}
+	}
+
+	c.JSON(http.StatusOK, model.ApiResponse{
+		Code: 0, Message: "success", Data: results, RequestID: c.GetString("request_id"),
+	})
+}
+
+// PeakHours GET /api/stats/peak-hours — 高峰时段分析
+func (h *Handler) PeakHours(c *gin.Context) {
+	type HourStat struct {
+		Hour  int   `json:"hour"`
+		Count int64 `json:"count"`
+	}
+
+	stats := make([]HourStat, 0, 24)
+	for hour := 0; hour < 24; hour++ {
+		start := fmt.Sprintf("%02d:00", hour)
+		end := fmt.Sprintf("%02d:59", hour)
+		var count int64
+		h.db.Model(&model.Booking{}).
+			Where("status NOT IN ('cancelled','released') AND TO_CHAR(start_time, 'HH24:MI') >= ? AND TO_CHAR(start_time, 'HH24:MI') <= ?",
+				start, end).
+			Count(&count)
+		stats = append(stats, HourStat{Hour: hour, Count: count})
+	}
+
+	c.JSON(http.StatusOK, model.ApiResponse{
+		Code: 0, Message: "success", Data: stats, RequestID: c.GetString("request_id"),
 	})
 }
 

@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 	"strings"
 
@@ -122,10 +124,7 @@ func generateShortID() string {
 }
 
 func randomString(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[i%len(letters)]
-	}
-	return string(b)
+	b := make([]byte, n/2+1)
+	rand.Read(b)
+	return hex.EncodeToString(b)[:n]
 }

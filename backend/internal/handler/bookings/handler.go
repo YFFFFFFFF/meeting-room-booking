@@ -1,6 +1,9 @@
 package bookings
 
 import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,15 +12,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/model"
 	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/repository"
+	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/service"
 )
 
 type Handler struct {
-	db    *repository.DB
-	cache *repository.Cache
+	db              *repository.DB
+	cache           *repository.Cache
+	calendarService *service.CalendarSyncService
 }
 
-func NewHandler(db *repository.DB, cache *repository.Cache) *Handler {
-	return &Handler{db: db, cache: cache}
+func NewHandler(db *repository.DB, cache *repository.Cache, calSvc *service.CalendarSyncService) *Handler {
+	return &Handler{db: db, cache: cache, calendarService: calSvc}
 }
 
 // Create POST /api/bookings
@@ -159,6 +164,13 @@ func (h *Handler) Create(c *gin.Context) {
 		msg = "已提交审批，请等待管理员审核"
 	}
 
+	// 异步同步到企微日历（不阻塞响应）
+	go func() {
+		if err := h.calendarService.SyncBookingCreated(context.Background(), &booking); err != nil {
+			// 日志已在 service 层记录
+		}
+	}()
+
 	c.JSON(http.StatusCreated, model.ApiResponse{
 		Code: 0, Message: msg,
 		Data: bookingToResponse(booking, h.db),
@@ -250,6 +262,11 @@ func (h *Handler) Update(c *gin.Context) {
 	h.db.Model(&booking).Updates(updates)
 	h.db.First(&booking, "id = ?", id)
 
+	// 异步同步日历更新
+	go func() {
+		h.calendarService.SyncBookingUpdated(context.Background(), &booking)
+	}()
+
 	c.JSON(http.StatusOK, model.ApiResponse{
 		Code: 0, Message: "修改成功", Data: bookingToResponse(booking, h.db), RequestID: c.GetString("request_id"),
 	})
@@ -283,6 +300,12 @@ func (h *Handler) Cancel(c *gin.Context) {
 	})
 
 	booking.Status = "cancelled"
+
+	// 异步删除日历事件
+	go func() {
+		h.calendarService.SyncBookingCancelled(context.Background(), booking.ID)
+	}()
+
 	c.JSON(http.StatusOK, model.ApiResponse{
 		Code: 0, Message: "取消成功", Data: bookingToResponse(booking, h.db), RequestID: c.GetString("request_id"),
 	})
@@ -390,14 +413,13 @@ func splitStatus(s string) []string {
 }
 
 func generateID(prefix string) string {
-	return prefix + "-" + randomStr(8)
+	b := make([]byte, 4)
+	rand.Read(b)
+	return prefix + "-" + hex.EncodeToString(b)
 }
 
 func randomStr(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[i%len(letters)]
-	}
-	return string(b)
+	b := make([]byte, n/2+1)
+	rand.Read(b)
+	return hex.EncodeToString(b)[:n]
 }

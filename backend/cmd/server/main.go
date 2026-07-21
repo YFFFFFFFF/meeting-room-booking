@@ -29,6 +29,7 @@ import (
 	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/middleware"
 	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/model"
 	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/repository"
+	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/service"
 )
 
 func Run() {
@@ -67,6 +68,13 @@ func Run() {
 
 	cache := repository.NewCache(rdb)
 
+	// 初始化服务
+	calSvc := service.NewCalendarSyncService(repo, cache)
+	cacheSvc := service.NewCacheService(repo, cache)
+
+	// 预热缓存
+	go cacheSvc.WarmUpCache(context.Background())
+
 	// 初始化 JWT
 	middleware.InitJWTSecret(cfg.JWT.Secret)
 
@@ -91,7 +99,7 @@ func Run() {
 		api.GET("/auth/me", middleware.AuthRequired(), authH.Me)
 
 		// 会议室
-		roomH := rooms.NewHandler(repo, cache)
+		roomH := rooms.NewHandler(repo, cache, cacheSvc)
 		api.GET("/rooms", middleware.AuthRequired(), roomH.List)
 		api.GET("/rooms/:id", middleware.AuthRequired(), roomH.Get)
 		api.GET("/rooms/:id/availability", middleware.AuthRequired(), roomH.Availability)
@@ -102,7 +110,7 @@ func Run() {
 		api.GET("/rooms/export", middleware.AuthRequired(), middleware.RoleRequired("admin", "super_admin"), roomH.Export)
 
 		// 预约
-		bookingH := bookings.NewHandler(repo, cache)
+		bookingH := bookings.NewHandler(repo, cache, calSvc)
 		api.POST("/bookings", middleware.AuthRequired(), bookingH.Create)
 		api.PUT("/bookings/:id", middleware.AuthRequired(), bookingH.Update)
 		api.DELETE("/bookings/:id", middleware.AuthRequired(), bookingH.Cancel)
@@ -126,6 +134,9 @@ func Run() {
 		statsH := stats.NewHandler(repo, cache)
 		api.GET("/stats/dashboard", middleware.AuthRequired(), statsH.Dashboard)
 		api.GET("/stats/utilization", middleware.AuthRequired(), statsH.Utilization)
+		api.GET("/stats/trend", middleware.AuthRequired(), statsH.Trend)
+		api.GET("/stats/hot-rooms", middleware.AuthRequired(), statsH.HotRooms)
+		api.GET("/stats/peak-hours", middleware.AuthRequired(), statsH.PeakHours)
 		api.GET("/stats/export", middleware.AuthRequired(), statsH.Export)
 
 		// 配置

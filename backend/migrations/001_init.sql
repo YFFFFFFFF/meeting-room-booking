@@ -1,7 +1,7 @@
-# 数据库迁移脚本
-# 创建初始表结构
+-- Database migration: meeting room booking system
+-- Creates initial table structure
 
--- 用户表
+-- Users table
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(36) PRIMARY KEY,
     wecom_user_id VARCHAR(128) UNIQUE NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 会议室表
+-- Meeting rooms table
 CREATE TABLE IF NOT EXISTS meeting_rooms (
     id VARCHAR(36) PRIMARY KEY,
     name VARCHAR(128) NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS meeting_rooms (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 预约表
+-- Bookings table
 CREATE TABLE IF NOT EXISTS bookings (
     id VARCHAR(36) PRIMARY KEY,
     room_id VARCHAR(36) NOT NULL REFERENCES meeting_rooms(id),
@@ -51,7 +51,7 @@ CREATE INDEX IF NOT EXISTS idx_bookings_organizer_id ON bookings(organizer_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
 CREATE INDEX IF NOT EXISTS idx_bookings_time ON bookings(start_time, end_time);
 
--- 参会人表
+-- Attendees table
 CREATE TABLE IF NOT EXISTS attendees (
     id VARCHAR(36) PRIMARY KEY,
     booking_id VARCHAR(36) NOT NULL REFERENCES bookings(id),
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS attendees (
 
 CREATE INDEX IF NOT EXISTS idx_attendees_booking_id ON attendees(booking_id);
 
--- 设备表
+-- Equipment table
 CREATE TABLE IF NOT EXISTS equipment (
     id VARCHAR(36) PRIMARY KEY,
     room_id VARCHAR(36) NOT NULL REFERENCES meeting_rooms(id),
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS equipment (
 
 CREATE INDEX IF NOT EXISTS idx_equipment_room_id ON equipment(room_id);
 
--- 报修工单表
+-- Repair tickets table
 CREATE TABLE IF NOT EXISTS repair_tickets (
     id VARCHAR(36) PRIMARY KEY,
     equipment_id VARCHAR(36) NOT NULL REFERENCES equipment(id),
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS repair_tickets (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 审批表
+-- Approvals table
 CREATE TABLE IF NOT EXISTS approvals (
     id VARCHAR(36) PRIMARY KEY,
     booking_id VARCHAR(36) NOT NULL REFERENCES bookings(id),
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS approvals (
 
 CREATE INDEX IF NOT EXISTS idx_approvals_booking_id ON approvals(booking_id);
 
--- 预约规则表
+-- Booking rules table
 CREATE TABLE IF NOT EXISTS booking_rules (
     id SERIAL PRIMARY KEY,
     max_advance_days INT DEFAULT 30,
@@ -120,5 +120,5 @@ CREATE TABLE IF NOT EXISTS booking_rules (
     approval_timeout_hours INT DEFAULT 24
 );
 
--- 插入默认规则
+-- Insert default rules
 INSERT INTO booking_rules (id) VALUES (1) ON CONFLICT DO NOTHING;

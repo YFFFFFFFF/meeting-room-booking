@@ -1,21 +1,25 @@
 package rooms
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/model"
 	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/repository"
+	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/service"
 )
 
 type Handler struct {
-	db    *repository.DB
-	cache *repository.Cache
+	db           *repository.DB
+	cache        *repository.Cache
+	cacheService *service.CacheService
 }
 
-func NewHandler(db *repository.DB, cache *repository.Cache) *Handler {
-	return &Handler{db: db, cache: cache}
+func NewHandler(db *repository.DB, cache *repository.Cache, cacheSvc *service.CacheService) *Handler {
+	return &Handler{db: db, cache: cache, cacheService: cacheSvc}
 }
 
 // List GET /api/rooms
@@ -25,6 +29,16 @@ func (h *Handler) List(c *gin.Context) {
 
 	var rooms []model.MeetingRoom
 	query := h.db.Where("status = ?", "active")
+
+	// 无筛选条件时使用缓存
+	noFilter := filter.Keyword == "" && filter.Floor == "" && filter.CapacityMin == 0 && filter.CapacityMax == 0 && len(filter.EquipmentTypes) == 0
+	if noFilter {
+		cached, err := h.cacheService.GetRoomsWithCache(c.Request.Context())
+		if err == nil && len(cached) > 0 {
+			rooms = cached
+			goto enrich
+		}
+	}
 
 	if filter.Keyword != "" {
 		query = query.Where("name ILIKE ?", "%"+filter.Keyword+"%")
@@ -41,6 +55,7 @@ func (h *Handler) List(c *gin.Context) {
 
 	query.Find(&rooms)
 
+enrich:
 	// 丰富房间数据
 	result := make([]model.RoomWithStatus, 0, len(rooms))
 	now := time.Now()
@@ -233,6 +248,9 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
+	// 清除缓存
+	go h.cacheService.InvalidateRoomCache(c.Request.Context())
+
 	c.JSON(http.StatusCreated, model.ApiResponse{
 		Code: 0, Message: "success", Data: body, RequestID: c.GetString("request_id"),
 	})
@@ -261,6 +279,8 @@ func (h *Handler) Update(c *gin.Context) {
 	body.UpdatedAt = time.Now()
 	h.db.Model(&room).Updates(&body)
 
+	go h.cacheService.InvalidateRoomCache(c.Request.Context())
+
 	c.JSON(http.StatusOK, model.ApiResponse{
 		Code: 0, Message: "success", Data: body, RequestID: c.GetString("request_id"),
 	})
@@ -284,6 +304,9 @@ func (h *Handler) Delete(c *gin.Context) {
 	})
 
 	room.Status = "inactive"
+
+	go h.cacheService.InvalidateRoomCache(c.Request.Context())
+
 	c.JSON(http.StatusOK, model.ApiResponse{
 		Code: 0, Message: "success", Data: room, RequestID: c.GetString("request_id"),
 	})
@@ -312,14 +335,7 @@ func getOrganizerName(db *repository.DB, userID string) string {
 }
 
 func generateID(prefix string) string {
-	return prefix + "-" + randomStr(8)
-}
-
-func randomStr(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[i%len(letters)]
-	}
-	return string(b)
+	b := make([]byte, 4)
+	rand.Read(b)
+	return prefix + "-" + hex.EncodeToString(b)
 }

@@ -1,6 +1,8 @@
 package equipment
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 	"time"
 
@@ -126,14 +128,7 @@ func (h *Handler) UpdateTicket(c *gin.Context) {
 }
 
 func generateID(prefix string) string {
-	return prefix + "-" + randomStr(8)
-}
-
-func randomStr(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[i%len(letters)]
-	}
-	return string(b)
+	b := make([]byte, 4)
+	rand.Read(b)
+	return prefix + "-" + hex.EncodeToString(b)
 }
