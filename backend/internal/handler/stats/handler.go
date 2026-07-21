@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/xuri/excelize/v2"
 	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/model"
 	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/repository"
 )
@@ -96,19 +97,105 @@ func (h *Handler) Dashboard(c *gin.Context) {
 		typeStats = append(typeStats, TypeStat{Type: string(rt), Total: int(total), Occupied: int(occ), Utilization: u})
 	}
 
+	// 趋势数据（近7天）
+	trendData := h.buildTrendData(now)
+
+	// 热门会议室 Top 5
+	hotRooms := h.buildHotRooms(now)
+
 	c.JSON(http.StatusOK, model.ApiResponse{
 		Code:    0, Message: "success",
 		Data: map[string]interface{}{
-			"total_rooms":        totalRooms,
-			"occupied_rooms":     occupiedCount,
-			"free_rooms":         freeRooms,
-			"today_bookings":     todayBookings,
+			"total_rooms":         totalRooms,
+			"occupied_rooms":      occupiedCount,
+			"free_rooms":          freeRooms,
+			"today_bookings":      todayBookings,
 			"current_utilization": utilization,
-			"floor_stats":        floorStats,
-			"type_stats":         typeStats,
+			"floor_stats":         floorStats,
+			"type_stats":          typeStats,
+			"trend":               trendData,
+			"top_rooms":           hotRooms,
 		},
 		RequestID: c.GetString("request_id"),
 	})
+}
+
+// buildTrendData 构建近7天趋势数据
+func (h *Handler) buildTrendData(now time.Time) []map[string]interface{} {
+	days := 7
+	startDate := now.AddDate(0, 0, -days+1)
+	dayStart := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
+
+	trends := make([]map[string]interface{}, 0, days)
+	for i := 0; i < days; i++ {
+		d := dayStart.AddDate(0, 0, i)
+		dEnd := d.Add(24 * time.Hour)
+		dateStr := d.Format("01-02")
+
+		var total int64
+		h.db.Model(&model.Booking{}).Where("start_time >= ? AND start_time < ?", d, dEnd).Count(&total)
+
+		var occupied int64
+		h.db.Model(&model.Booking{}).
+			Where("status NOT IN ('cancelled','released') AND start_time >= ? AND start_time < ?", d, dEnd).
+			Count(&occupied)
+
+		utilRate := 0.0
+		var totalRooms int64
+		h.db.Model(&model.MeetingRoom{}).Where("status = 'active'").Count(&totalRooms)
+		if totalRooms > 0 {
+			utilRate = float64(occupied) / float64(totalRooms) * 100
+		}
+
+		trends = append(trends, map[string]interface{}{
+			"date":        dateStr,
+			"bookings":    total,
+			"utilization": utilRate,
+		})
+	}
+	return trends
+}
+
+// buildHotRooms 构建热门会议室 Top 5
+func (h *Handler) buildHotRooms(now time.Time) []map[string]interface{} {
+	startTime := now.AddDate(0, -1, 0)
+	endTime := now
+
+	type HotRoom struct {
+		RoomID       string
+		RoomName     string
+		Floor        string
+		BookingCount int64
+		TotalHours   float64
+	}
+
+	var results []HotRoom
+	h.db.Model(&model.Booking{}).
+		Select("bookings.room_id, meeting_rooms.name as room_name, meeting_rooms.floor, count(*) as booking_count, COALESCE(SUM(EXTRACT(EPOCH FROM bookings.end_time - bookings.start_time)/3600), 0) as total_hours").
+		Joins("JOIN meeting_rooms ON bookings.room_id = meeting_rooms.id").
+		Where("bookings.start_time >= ? AND bookings.start_time < ? AND bookings.status != 'cancelled' AND bookings.status != 'released'",
+			startTime, endTime).
+		Group("bookings.room_id, meeting_rooms.name, meeting_rooms.floor").
+		Order("booking_count DESC").
+		Limit(5).
+		Scan(&results)
+
+	totalHours := endTime.Sub(startTime).Hours()
+	hotRooms := make([]map[string]interface{}, 0, len(results))
+	for _, r := range results {
+		utilRate := 0.0
+		if totalHours > 0 {
+			utilRate = r.TotalHours / totalHours * 100
+		}
+		hotRooms = append(hotRooms, map[string]interface{}{
+			"room_id":          r.RoomID,
+			"room_name":        r.RoomName,
+			"floor":            r.Floor,
+			"booking_count":    r.BookingCount,
+			"utilization_rate": utilRate,
+		})
+	}
+	return hotRooms
 }
 
 // Utilization GET /api/stats/utilization
@@ -255,7 +342,69 @@ func (h *Handler) PeakHours(c *gin.Context) {
 
 // Export GET /api/stats/export
 func (h *Handler) Export(c *gin.Context) {
+	f := excelize.NewFile()
+	defer f.Close()
+
+	sheet := "数据报表"
+	f.SetSheetName("Sheet1", sheet)
+
+	// 表头
+	headers := []string{"会议室", "利用率(%)", "总预约数", "取消数", "平均时长(分钟)"}
+	for i, hdr := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		f.SetCellValue(sheet, cell, hdr)
+	}
+
+	headerStyle, _ := f.NewStyle(&excelize.Style{
+		Font: &excelize.Font{Bold: true, Size: 12},
+		Fill: excelize.Fill{Type: "pattern", Color: []string{"#E2E8F0"}, Pattern: 1},
+	})
+	f.SetCellStyle(sheet, "A1", "E1", headerStyle)
+
+	// 获取利用率数据
+	startDate := time.Now().AddDate(0, -1, 0)
+	endDate := time.Now().Add(24 * time.Hour)
+
+	var rooms []model.MeetingRoom
+	h.db.Where("status = ?", "active").Find(&rooms)
+
+	for i, room := range rooms {
+		var total, cancelled int64
+		h.db.Model(&model.Booking{}).Where("room_id = ? AND start_time >= ? AND start_time < ?", room.ID, startDate, endDate).Count(&total)
+		h.db.Model(&model.Booking{}).Where("room_id = ? AND status = 'cancelled' AND start_time >= ? AND start_time < ?", room.ID, startDate, endDate).Count(&cancelled)
+
+		var avgDuration float64
+		h.db.Model(&model.Booking{}).
+			Select("COALESCE(AVG(EXTRACT(EPOCH FROM end_time - start_time)/60), 0)").
+			Where("room_id = ? AND start_time >= ? AND start_time < ?", room.ID, startDate, endDate).
+			Scan(&avgDuration)
+
+		utilization := 0.0
+		if total > 0 {
+			utilization = float64(total-cancelled) / float64(total) * 100
+		}
+
+		row := i + 2
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), room.Name)
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), fmt.Sprintf("%.1f", utilization))
+		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), total)
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), cancelled)
+		f.SetCellValue(sheet, fmt.Sprintf("E%d", row), fmt.Sprintf("%.0f", avgDuration))
+	}
+
+	f.SetColWidth(sheet, "A", "A", 20)
+	f.SetColWidth(sheet, "B", "E", 15)
+
+	buf, err := f.WriteToBuffer()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.ApiResponse{
+			Code: 500, Message: "生成 Excel 失败", Data: nil, RequestID: c.GetString("request_id"),
+		})
+		return
+	}
+
+	filename := fmt.Sprintf("数据报表_%s.xlsx", time.Now().Format("2006-01-02"))
 	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	c.Header("Content-Disposition", "attachment; filename=stats.xlsx")
-	c.String(http.StatusOK, "Mock Excel Report Binary")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
 }

@@ -90,6 +90,9 @@ func Run() {
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "meeting-room-booking-backend"})
 	})
 
+	// 企微 Handler（供 api 和 cgi-bin 两个路由组使用）
+	wcH := wecom.NewHandler(repo, cache)
+
 	api := router.Group("/api")
 	{
 		// 认证（无需登录）
@@ -149,12 +152,16 @@ func Run() {
 		// 用户
 		userH := users.NewHandler(repo, cache)
 		api.GET("/users/search", middleware.AuthRequired(), userH.Search)
+
+		// 企微日程同步（后端内部 API）
+		api.GET("/wecom/calendar/events", middleware.AuthRequired(), wcH.CalendarEvents)
+		api.POST("/wecom/calendar/sync", middleware.AuthRequired(), wcH.CalendarSyncAll)
+		api.POST("/wecom/calendar/sync/:eventId", middleware.AuthRequired(), wcH.CalendarSyncOne)
 	}
 
 	// 企微 API Mock
 	wecomGroup := router.Group("/cgi-bin")
 	{
-		wcH := wecom.NewHandler(repo, cache)
 		wecomGroup.GET("/gettoken", wcH.GetToken)
 		wecomGroup.GET("/user/getuserinfo", wcH.GetUserInfo)
 		wecomGroup.GET("/user/get", wcH.GetUser)
