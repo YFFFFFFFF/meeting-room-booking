@@ -106,6 +106,60 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return res as unknown as T;
 }
 
+// ---- 文件上传 ----
+async function uploadFile<T>(path: string, file: File): Promise<T> {
+  const tokens = getTokens();
+  const headers: Record<string, string> = {};
+  if (tokens?.access_token) {
+    headers['Authorization'] = `Bearer ${tokens.access_token}`;
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const contentType = res.headers.get('Content-Type') || '';
+    if (contentType.includes('application/json')) {
+      const err = await res.json();
+      throw err;
+    }
+    throw new Error(`HTTP ${res.status}`);
+  }
+
+  return res.json();
+}
+
+// ---- 文件下载 ----
+async function downloadFile(path: string, filename?: string): Promise<void> {
+  const tokens = getTokens();
+  const headers: Record<string, string> = {};
+  if (tokens?.access_token) {
+    headers['Authorization'] = `Bearer ${tokens.access_token}`;
+  }
+
+  const res = await fetch(`${BASE_URL}${path}`, { headers });
+
+  if (!res.ok) {
+    throw new Error(`下载失败 HTTP ${res.status}`);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'download.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
   get: <T>(path: string, params?: Record<string, string | number | string[]>) =>
     request<T>(path, { method: 'GET', params }),
@@ -118,4 +172,10 @@ export const api = {
 
   delete: <T>(path: string) =>
     request<T>(path, { method: 'DELETE' }),
+
+  upload: <T>(path: string, file: File) =>
+    uploadFile<T>(path, file),
+
+  download: (path: string, filename?: string) =>
+    downloadFile(path, filename),
 };

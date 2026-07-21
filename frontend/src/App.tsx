@@ -12,6 +12,8 @@ import BookingFormPage from './pages/BookingForm';
 import RoomDetailPage from './pages/RoomDetail';
 import MyBookingsPage from './pages/MyBookings';
 import AdminRoomsPage from './pages/AdminRoomsPage';
+import DashboardPage from './pages/Dashboard';
+import WeComSyncPage from './pages/WeComSync';
 import './App.css';
 
 function AppRoutes() {
@@ -41,6 +43,8 @@ function AppRoutes() {
       <Route path="/rooms/:id" element={<RequireAuth><RoomDetailPage /></RequireAuth>} />
       <Route path="/my-bookings" element={<RequireAuth><MyBookingsPage /></RequireAuth>} />
       <Route path="/admin/rooms" element={<RequireAuth><AdminRoomsPage /></RequireAuth>} />
+      <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
+      <Route path="/wecom-sync" element={<RequireAuth><WeComSyncPage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

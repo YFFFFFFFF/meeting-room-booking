@@ -223,10 +223,10 @@ export const roomHandlers = [
   // 批量导入
   http.post('/api/rooms/import', async () => {
     await delay(500);
-    return HttpResponse.json<ApiResponse<{ imported: number; failed: number }>>({
+    return HttpResponse.json<ApiResponse<{ imported: number; failed: number; errors?: Array<{ row: number; reason: string }> }>>({
       code: 0,
       message: '导入成功',
-      data: { imported: 10, failed: 0 },
+      data: { imported: 8, failed: 2, errors: [{ row: 3, reason: '会议室名称重复' }, { row: 7, reason: '容量必须大于0' }] },
       request_id: generateRequestId(),
     });
   }),

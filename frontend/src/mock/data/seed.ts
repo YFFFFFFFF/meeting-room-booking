@@ -243,6 +243,22 @@ export const mockDashboard: DashboardData = {
     { floor: '8F', total: 2, occupied: 1, utilization: 50.0 },
     { floor: '10F', total: 2, occupied: 1, utilization: 50.0 },
   ],
+  trend: [
+    { date: '07-14', bookings: 28, utilization: 52.3 },
+    { date: '07-15', bookings: 35, utilization: 65.1 },
+    { date: '07-16', bookings: 42, utilization: 78.2 },
+    { date: '07-17', bookings: 38, utilization: 70.5 },
+    { date: '07-18', bookings: 45, utilization: 83.7 },
+    { date: '07-19', bookings: 30, utilization: 55.8 },
+    { date: '07-20', bookings: 9, utilization: 16.7 },
+  ],
+  top_rooms: [
+    { room_id: 'room-004', room_name: '5F-泰山', floor: '5F', booking_count: 200, utilization_rate: 88.9 },
+    { room_id: 'room-002', room_name: '3F-黄河', floor: '3F', booking_count: 145, utilization_rate: 78.5 },
+    { room_id: 'room-005', room_name: '5F-华山', floor: '5F', booking_count: 165, utilization_rate: 72.1 },
+    { room_id: 'room-009', room_name: '10F-云端', floor: '10F', booking_count: 150, utilization_rate: 70.4 },
+    { room_id: 'room-010', room_name: '10F-星空', floor: '10F', booking_count: 140, utilization_rate: 68.7 },
+  ],
 };
 
 // ---------- 工具函数 ----------

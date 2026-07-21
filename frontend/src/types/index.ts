@@ -224,6 +224,8 @@ export interface DashboardData {
   today_bookings: number;
   current_utilization: number;
   floor_stats: FloorStat[];
+  trend: TrendPoint[];
+  top_rooms: TopRoom[];
 }
 
 export interface FloorStat {
@@ -231,6 +233,20 @@ export interface FloorStat {
   total: number;
   occupied: number;
   utilization: number;
+}
+
+export interface TrendPoint {
+  date: string;
+  bookings: number;
+  utilization: number;
+}
+
+export interface TopRoom {
+  room_id: string;
+  room_name: string;
+  floor: string;
+  booking_count: number;
+  utilization_rate: number;
 }
 
 export interface UtilizationReport {
@@ -273,6 +289,23 @@ export interface WeComDepartmentMember {
   name: string;
   department: string;
   avatar: string;
+}
+
+// ---------- 企微日程同步 ----------
+
+export type SyncStatus = 'synced' | 'pending' | 'failed';
+
+export interface WeComCalendarEvent {
+  id: string;
+  booking_id: string;
+  cal_id: string | null;
+  title: string;
+  start_time: string;
+  end_time: string;
+  attendees: string[];
+  sync_status: SyncStatus;
+  synced_at: string | null;
+  sync_error?: string;
 }
 
 // ---------- 预约规则 ----------

@@ -1,9 +1,9 @@
 // ============================================================
 // 会议室管理页面 (P6) — 管理后台
-// CRUD 表格 + 表单弹窗 + 设备绑定 + 状态管理
+// CRUD 表格 + 表单弹窗 + 设备绑定 + 状态管理 + 批量导入导出
 // ============================================================
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
 import type { MeetingRoom, Equipment, RoomType, RoomStatus, ApiResponse } from '../types';
 import styles from './AdminRoomsPage.module.css';
@@ -68,6 +68,13 @@ export default function AdminRoomsPage() {
   const [form, setForm] = useState<RoomFormData>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // ---- 导入导出状态 ----
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; failed: number } | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
 
   const fetchRooms = useCallback(async () => {
     setLoading(true);
@@ -172,6 +179,57 @@ export default function AdminRoomsPage() {
     }
   }
 
+  // ---- 导入 ----
+  async function handleImport(file: File) {
+    setImporting(true);
+    setImportResult(null);
+    setImportErrors([]);
+    try {
+      const res = await api.upload<ApiResponse<{ imported: number; failed: number; errors?: Array<{ row: number; reason: string }> }>>('/rooms/import', file);
+      if (res.code === 0) {
+        setImportResult({ imported: res.data.imported, failed: res.data.failed });
+        if (res.data.errors?.length) {
+          setImportErrors(res.data.errors.map(e => `第${e.row}行：${e.reason}`));
+        }
+        fetchRooms();
+      } else {
+        setImportErrors([res.message || '导入失败']);
+      }
+    } catch {
+      setImportErrors(['导入请求失败，请检查文件格式']);
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) handleImport(file);
+    // 重置 input 以便重复选择同一文件
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  // ---- 导出 ----
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await api.download('/rooms/export', `会议室列表_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch {
+      alert('导出失败，请重试');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  // ---- 模板下载 ----
+  async function handleDownloadTemplate() {
+    try {
+      await api.download('/rooms/export', '会议室导入模板.xlsx');
+    } catch {
+      alert('模板下载失败');
+    }
+  }
+
   function toggleEquipment(equipId: string) {
     setForm(prev => ({
       ...prev,
@@ -191,12 +249,62 @@ export default function AdminRoomsPage() {
           <h2>🏢 会议室管理</h2>
           <p className={styles.subtitle}>管理会议室资源、设备绑定和状态</p>
         </div>
-        <button className={styles.btnPrimary} onClick={openCreate}>
-          + 新增会议室
-        </button>
+        <div className={styles.headerActions}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+          />
+          <button
+            className={styles.btnSecondary}
+            onClick={handleDownloadTemplate}
+            title="下载 Excel 导入模板"
+          >
+            📥 模板
+          </button>
+          <button
+            className={styles.btnSecondary}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+          >
+            {importing ? '⏳ 导入中...' : '📤 导入'}
+          </button>
+          <button
+            className={styles.btnSecondary}
+            onClick={handleExport}
+            disabled={exporting}
+          >
+            {exporting ? '⏳ 导出中...' : '📥 导出'}
+          </button>
+          <button className={styles.btnPrimary} onClick={openCreate}>
+            + 新增会议室
+          </button>
+        </div>
       </div>
 
       {error && <div className={styles.error}>{error}</div>}
+
+      {/* 导入结果提示 */}
+      {importResult && (
+        <div className={`${styles.importBanner} ${importResult.failed > 0 ? styles.importBannerWarn : ''}`}>
+          <span className={styles.importBannerIcon}>
+            {importResult.failed === 0 ? '✅' : '⚠️'}
+          </span>
+          <div>
+            <strong>导入完成：</strong>
+            成功 {importResult.imported} 条
+            {importResult.failed > 0 && <span>，失败 {importResult.failed} 条</span>}
+          </div>
+          {importErrors.length > 0 && (
+            <ul className={styles.importErrors}>
+              {importErrors.map((err, i) => <li key={i}>{err}</li>)}
+            </ul>
+          )}
+          <button className={styles.importDismiss} onClick={() => { setImportResult(null); setImportErrors([]); }}>×</button>
+        </div>
+      )}
 
       {loading ? (
         <div className={styles.loading}>

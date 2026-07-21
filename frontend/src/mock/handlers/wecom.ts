@@ -199,4 +199,85 @@ export const wecomHandlers = [
       expires_in: 7200,
     });
   }),
+
+  // ============ 日程同步 API（后端） ============
+
+  // 获取已同步的日程列表
+  http.get('/api/wecom/calendar/events', async () => {
+    await delay(300);
+    return HttpResponse.json<ApiResponse<WeComCalendarEvent[]>>({
+      code: 0,
+      message: 'success',
+      data: [
+        {
+          id: 'evt-001',
+          booking_id: 'booking-001',
+          cal_id: 'mock-cal-001',
+          title: 'Q3 产品评审 — 3F-长江',
+          start_time: '2026-07-20T09:00:00+08:00',
+          end_time: '2026-07-20T10:00:00+08:00',
+          attendees: ['zhiniu', 'zhangsan', 'lisi'],
+          sync_status: 'synced',
+          synced_at: '2026-07-19T18:30:00+08:00',
+        },
+        {
+          id: 'evt-002',
+          booking_id: 'booking-002',
+          cal_id: 'mock-cal-002',
+          title: '技术分享会 — 5F-泰山',
+          start_time: '2026-07-20T14:00:00+08:00',
+          end_time: '2026-07-20T16:00:00+08:00',
+          attendees: ['muzirili', 'wangwu'],
+          sync_status: 'synced',
+          synced_at: '2026-07-19T20:15:00+08:00',
+        },
+        {
+          id: 'evt-003',
+          booking_id: 'booking-003',
+          cal_id: null,
+          title: '周例会 — 8F-报告厅A',
+          start_time: '2026-07-21T10:00:00+08:00',
+          end_time: '2026-07-21T11:00:00+08:00',
+          attendees: ['zhiniu', 'muzirili', 'zhangsan', 'lisi', 'wangwu'],
+          sync_status: 'pending',
+          synced_at: null,
+        },
+        {
+          id: 'evt-004',
+          booking_id: 'booking-004',
+          cal_id: 'mock-cal-004',
+          title: '客户演示 — 10F-云端',
+          start_time: '2026-07-20T15:00:00+08:00',
+          end_time: '2026-07-20T16:30:00+08:00',
+          attendees: ['zhiniu', 'zhangsan'],
+          sync_status: 'failed',
+          synced_at: '2026-07-19T17:00:00+08:00',
+          sync_error: '企微 API 超时',
+        },
+      ],
+      request_id: generateRequestId(),
+    });
+  }),
+
+  // 手动触发同步
+  http.post('/api/wecom/calendar/sync', async () => {
+    await delay(800);
+    return HttpResponse.json<ApiResponse<{ synced: number; failed: number; errors?: string[] }>>({
+      code: 0,
+      message: '同步完成',
+      data: { synced: 3, failed: 1, errors: ['evt-004: 企微 API 超时，请稍后重试'] },
+      request_id: generateRequestId(),
+    });
+  }),
+
+  // 同步单个日程
+  http.post('/api/wecom/calendar/sync/:eventId', async () => {
+    await delay(400);
+    return HttpResponse.json<ApiResponse<null>>({
+      code: 0,
+      message: '同步成功',
+      data: null,
+      request_id: generateRequestId(),
+    });
+  }),
 ];

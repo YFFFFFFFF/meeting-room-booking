@@ -1,0 +1,333 @@
+/* ---- Layout ---- */
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.header h2 { margin: 0; font-size: 22px; color: #1f2937; }
+
+.subtitle { margin: 4px 0 0; font-size: 13px; color: #9ca3af; }
+
+.exportBtn {
+  padding: 10px 22px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.exportBtn:hover:not(:disabled) { background: #4338ca; }
+.exportBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---- Cards ---- */
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+  .cardGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 500px) {
+  .cardGrid { grid-template-columns: 1fr; }
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: box-shadow 0.2s;
+}
+
+.card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+.cardIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.cardContent { flex: 1; min-width: 0; }
+
+.cardLabel { font-size: 13px; color: #9ca3af; margin-bottom: 4px; }
+
+.cardValue { font-size: 28px; font-weight: 700; color: #1f2937; line-height: 1.2; }
+
+.utilBar {
+  margin-top: 8px;
+  height: 6px;
+  background: #f3f4f6;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.utilFill {
+  height: 100%;
+  background: linear-gradient(90deg, #4f46e5, #818cf8);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* ---- Charts ---- */
+
+.chartRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 800px) {
+  .chartRow { grid-template-columns: 1fr; }
+}
+
+.chartCard {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.chartTitle {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* ---- Sections ---- */
+
+.section {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.sectionTitle { margin: 0 0 16px; font-size: 15px; font-weight: 600; color: #374151; }
+
+/* ---- Rankings ---- */
+
+.rankList { display: flex; flex-direction: column; gap: 12px; }
+
+.rankItem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border-radius: 10px;
+  transition: background 0.15s;
+}
+
+.rankItem:hover { background: #f3f4f6; }
+
+.rankBadge {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.rankInfo { flex: 1; min-width: 0; }
+
+.rankName { font-size: 14px; font-weight: 600; color: #1f2937; }
+
+.rankFloor { font-size: 12px; color: #9ca3af; }
+
+.rankStats { display: flex; gap: 16px; font-size: 13px; color: #6b7280; flex-shrink: 0; }
+
+.rankCount { color: #4f46e5; font-weight: 500; }
+
+.rankRate { font-weight: 600; }
+
+.rankBar {
+  width: 100px;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.rankFill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+@media (max-width: 600px) {
+  .rankBar { display: none; }
+  .rankStats { flex-direction: column; gap: 2px; }
+}
+
+/* ---- Table ---- */
+
+.tableWrapper { overflow-x: auto; }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table td {
+  padding: 12px 14px;
+  font-size: 14px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #374151;
+}
+
+.table tbody tr:hover { background: #f9fafb; }
+
+.rankCell { font-weight: 700; color: #4f46e5; width: 50px; }
+
+.roomCell { font-weight: 600; }
+
+.utilCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+
+.utilBarSmall {
+  width: 80px;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.utilFillSmall {
+  height: 100%;
+  background: #4f46e5;
+  border-radius: 3px;
+}
+
+/* ---- States ---- */
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  background: white;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.errorIcon { font-size: 48px; margin-bottom: 12px; }
+.error p { color: #9ca3af; font-size: 15px; margin: 0 0 16px; }
+
+.retryBtn {
+  padding: 10px 24px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.retryBtn:hover { background: #4338ca; }
+
+/* ---- Skeleton ---- */
+
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.skeletonCard {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.skelTitle {
+  width: 60%;
+  height: 14px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.skelValue {
+  width: 40%;
+  height: 28px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.skelSub {
+  width: 80%;
+  height: 6px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 3px;
+}
+
+.skeletonChart {
+  height: 260px;
+  background: white;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #f9fafb 25%, #f3f4f6 50%, #f9fafb 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
