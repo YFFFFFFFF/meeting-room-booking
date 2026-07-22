@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"time"
 
@@ -122,6 +121,3 @@ func marshal(v interface{}) (string, error) {
 func unmarshal(data string, v interface{}) error {
 	return json.Unmarshal([]byte(data), v)
 }
-
-// 避免 unused import
-var _ = fmt.Sprintf

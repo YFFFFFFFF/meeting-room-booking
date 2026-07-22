@@ -39,6 +39,21 @@ func (h *Handler) Pending(c *gin.Context) {
 	}
 
 	result := make([]ApprovalResponse, 0, len(approvals))
+
+	// 批量查询所有 attendees（避免 N+1）
+	bookingIDs := make([]string, 0, len(approvals))
+	for _, a := range approvals {
+		bookingIDs = append(bookingIDs, a.BookingID)
+	}
+	var allAttendees []model.Attendee
+	if len(bookingIDs) > 0 {
+		h.db.Where("booking_id IN ?", bookingIDs).Find(&allAttendees)
+	}
+	attendeeCountMap := make(map[string]int, len(bookingIDs))
+	for _, at := range allAttendees {
+		attendeeCountMap[at.BookingID]++
+	}
+
 	for _, a := range approvals {
 		resp := ApprovalResponse{
 			ID:            a.ID,
@@ -58,9 +73,7 @@ func (h *Handler) Pending(c *gin.Context) {
 			if a.Booking.Organizer != nil {
 				resp.OrganizerName = a.Booking.Organizer.Name
 			}
-			var attendees []model.Attendee
-			h.db.Where("booking_id = ?", a.BookingID).Find(&attendees)
-			resp.AttendeesCount = len(attendees)
+			resp.AttendeesCount = attendeeCountMap[a.BookingID]
 		}
 		result = append(result, resp)
 	}

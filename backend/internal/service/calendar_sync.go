@@ -170,7 +170,6 @@ func (s *CalendarSyncService) HandleCalendarWebhook(ctx context.Context, payload
 	log.Printf("[Webhook] 日历事件变更: cal_id=%s action=%s", webhook.CalID, webhook.Action)
 
 	// 反向查找 booking_id
-	var bookingID string
 	// 遍历 Redis keys 找到对应的 booking
 	// Mock: 直接通过 cal_id 前缀匹配
 	if webhook.Action == "deleted" {
@@ -178,6 +177,7 @@ func (s *CalendarSyncService) HandleCalendarWebhook(ctx context.Context, payload
 		log.Printf("[Webhook] 日历事件被删除，需释放对应预约")
 	}
 
-	_ = bookingID
+	// TODO: 实现 bookingID 查找逻辑后使用
+	_ = webhook.Action
 	return nil
 }

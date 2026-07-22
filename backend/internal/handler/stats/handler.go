@@ -54,42 +54,65 @@ func (h *Handler) Dashboard(c *gin.Context) {
 	h.db.Model(&model.MeetingRoom{}).Select("floor, count(*) as total").
 		Where("status = ?", "active").Group("floor").Scan(&floors)
 
+	// 一次性查询各楼层占用情况（避免 N+1）
+	type FloorOccRow struct {
+		Floor    string
+		Occupied int64
+	}
+	var floorOccs []FloorOccRow
+	h.db.Model(&model.Booking{}).
+		Select("meeting_rooms.floor, COUNT(DISTINCT bookings.room_id) as occupied").
+		Joins("JOIN meeting_rooms ON bookings.room_id = meeting_rooms.id").
+		Where("bookings.status IN ('confirmed','checked_in') AND bookings.start_time <= ? AND bookings.end_time > ?", now, now).
+		Group("meeting_rooms.floor").
+		Scan(&floorOccs)
+
+	occMap := make(map[string]int64, len(floorOccs))
+	for _, fo := range floorOccs {
+		occMap[fo.Floor] = fo.Occupied
+	}
+
 	floorStats := make([]model.FloorStat, 0, len(floors))
 	for _, f := range floors {
-		var occupied int64
-		h.db.Model(&model.Booking{}).
-			Joins("JOIN meeting_rooms ON bookings.room_id = meeting_rooms.id").
-			Where("meeting_rooms.floor = ? AND bookings.status IN ('confirmed','checked_in') AND bookings.start_time <= ? AND bookings.end_time > ?",
-				f.Floor, now, now).
-			Distinct("bookings.room_id").Count(&occupied)
-
+		occupied := occMap[f.Floor]
 		fUtil := 0.0
 		if f.Total > 0 {
 			fUtil = float64(occupied) / float64(f.Total) * 100
 		}
-
 		floorStats = append(floorStats, model.FloorStat{
 			Floor: f.Floor, Total: f.Total, Occupied: int(occupied), Utilization: fUtil,
 		})
 	}
 
-	// 按类型统计
+	// 按类型统计（一次查询）
 	type TypeStat struct {
-		Type       string  `json:"type"`
-		Total      int     `json:"total"`
-		Occupied   int     `json:"occupied"`
+		Type        string  `json:"type"`
+		Total       int     `json:"total"`
+		Occupied    int     `json:"occupied"`
 		Utilization float64 `json:"utilization"`
 	}
+	type TypeOccRow struct {
+		RoomType string
+		Occupied int64
+	}
+	var typeOccs []TypeOccRow
+	h.db.Model(&model.Booking{}).
+		Select("meeting_rooms.room_type, COUNT(DISTINCT bookings.room_id) as occupied").
+		Joins("JOIN meeting_rooms ON bookings.room_id = meeting_rooms.id").
+		Where("bookings.status IN ('confirmed','checked_in') AND bookings.start_time <= ? AND bookings.end_time > ?", now, now).
+		Group("meeting_rooms.room_type").
+		Scan(&typeOccs)
+
+	typeOccMap := make(map[string]int64, len(typeOccs))
+	for _, to := range typeOccs {
+		typeOccMap[to.RoomType] = to.Occupied
+	}
+
 	typeStats := make([]TypeStat, 0)
 	for _, rt := range []model.RoomType{model.RoomTypeSmall, model.RoomTypeMedium, model.RoomTypeLarge} {
 		var total int64
 		h.db.Model(&model.MeetingRoom{}).Where("status = 'active' AND room_type = ?", rt).Count(&total)
-		var occ int64
-		h.db.Model(&model.Booking{}).
-			Joins("JOIN meeting_rooms ON bookings.room_id = meeting_rooms.id").
-			Where("meeting_rooms.room_type = ? AND bookings.status IN ('confirmed','checked_in') AND bookings.start_time <= ? AND bookings.end_time > ?",
-				rt, now, now).
-			Distinct("bookings.room_id").Count(&occ)
+		occ := typeOccMap[string(rt)]
 		u := 0.0
 		if total > 0 {
 			u = float64(occ) / float64(total) * 100

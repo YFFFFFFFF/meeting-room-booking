@@ -2,20 +2,21 @@ package config
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/model"
 	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/repository"
+	"github.com/YFFFFFFFF/meeting-room-booking/backend/internal/service"
 )
 
 type Handler struct {
-	db    *repository.DB
-	cache *repository.Cache
+	db           *repository.DB
+	cache        *repository.Cache
+	cacheService *service.CacheService
 }
 
-func NewHandler(db *repository.DB, cache *repository.Cache) *Handler {
-	return &Handler{db: db, cache: cache}
+func NewHandler(db *repository.DB, cache *repository.Cache, cacheSvc *service.CacheService) *Handler {
+	return &Handler{db: db, cache: cache, cacheService: cacheSvc}
 }
 
 // GetBookingRules GET /api/config/booking-rules
@@ -60,6 +61,11 @@ func (h *Handler) UpdateBookingRules(c *gin.Context) {
 		h.db.Model(&rules).Updates(&body)
 	}
 
+	// 清除缓存，使下次读取即时生效
+	if h.cacheService != nil {
+		go h.cacheService.InvalidateRulesCache(c.Request.Context())
+	}
+
 	c.JSON(http.StatusOK, model.ApiResponse{
 		Code: 0, Message: "规则更新成功，即时生效", Data: body, RequestID: c.GetString("request_id"),
 	})
@@ -89,8 +95,6 @@ func (h *Handler) GetEquipmentTypes(c *gin.Context) {
 		{"value": "adapter", "label": "转接头"},
 		{"value": "phone", "label": "会议电话"},
 	}
-
-	_ = time.Now() // used in real implementation
 
 	c.JSON(http.StatusOK, model.ApiResponse{
 		Code: 0, Message: "success", Data: types, RequestID: c.GetString("request_id"),

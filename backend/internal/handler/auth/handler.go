@@ -23,15 +23,21 @@ func NewHandler(db *repository.DB, cache *repository.Cache) *Handler {
 // Login POST /api/auth/login
 func (h *Handler) Login(c *gin.Context) {
 	var req model.LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		req.UserID = "zhiniu"
+	if err := c.ShouldBindJSON(&req); err != nil || req.UserID == "" {
+		c.JSON(http.StatusBadRequest, model.ApiResponse{
+			Code:      400,
+			Message:   "请提供有效的 user_id",
+			Data:      nil,
+			RequestID: c.GetString("request_id"),
+		})
+		return
 	}
 
 	var user model.User
 	if err := h.db.Where("wecom_user_id = ?", req.UserID).First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, model.ApiResponse{
 			Code:      401,
-			Message:   "用户不存在或密码错误",
+			Message:   "用户不存在",
 			Data:      nil,
 			RequestID: c.GetString("request_id"),
 		})
@@ -49,7 +55,7 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenStr, err := token.SignedString([]byte("meeting-room-booking-secret-key"))
+	tokenStr, err := token.SignedString(middleware.GetJWTSecret())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, model.ApiResponse{
 			Code:      500,
@@ -89,7 +95,16 @@ func (h *Handler) Refresh(c *gin.Context) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenStr, _ := token.SignedString([]byte("meeting-room-booking-secret-key"))
+	tokenStr, err := token.SignedString(middleware.GetJWTSecret())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.ApiResponse{
+			Code:      500,
+			Message:   "Token刷新失败",
+			Data:      nil,
+			RequestID: c.GetString("request_id"),
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, model.ApiResponse{
 		Code:    0,

@@ -68,6 +68,13 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
+	// 分布式锁：防止并发创建同一时段同一会议室的预约
+	lockKey := fmt.Sprintf("booking:lock:%s:%s:%s", req.RoomID, req.StartTime, req.EndTime)
+	locked, err := h.cache.AcquireLock(c.Request.Context(), lockKey, 5*time.Second)
+	if err == nil && locked {
+		defer h.cache.ReleaseLock(c.Request.Context(), lockKey)
+	}
+
 	// 冲突检测
 	var conflicts []model.Booking
 	h.db.Where("room_id = ? AND status NOT IN ('cancelled','released') AND start_time < ? AND end_time > ?",
@@ -219,15 +226,23 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 	if req.StartTime != nil {
 		t, err := time.Parse("2006-01-02T15:04:05", *req.StartTime)
-		if err == nil {
-			updates["start_time"] = t
+		if err != nil {
+			c.JSON(http.StatusBadRequest, model.ApiResponse{
+				Code: 400, Message: "开始时间格式错误", Data: nil, RequestID: c.GetString("request_id"),
+			})
+			return
 		}
+		updates["start_time"] = t
 	}
 	if req.EndTime != nil {
 		t, err := time.Parse("2006-01-02T15:04:05", *req.EndTime)
-		if err == nil {
-			updates["end_time"] = t
+		if err != nil {
+			c.JSON(http.StatusBadRequest, model.ApiResponse{
+				Code: 400, Message: "结束时间格式错误", Data: nil, RequestID: c.GetString("request_id"),
+			})
+			return
 		}
+		updates["end_time"] = t
 	}
 	if req.EquipmentIDs != nil {
 		equipmentJSON, _ := json.Marshal(req.EquipmentIDs)
@@ -276,11 +291,21 @@ func (h *Handler) Update(c *gin.Context) {
 func (h *Handler) Cancel(c *gin.Context) {
 	id := c.Param("id")
 	userID, _ := c.Get("user_id")
+	userIDStr := userID.(string)
+	role, _ := c.Get("role")
 
 	var booking model.Booking
 	if err := h.db.First(&booking, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, model.ApiResponse{
 			Code: 404, Message: "预约不存在", Data: nil, RequestID: c.GetString("request_id"),
+		})
+		return
+	}
+
+	// 权限校验：只有组织者本人或管理员可以取消
+	if booking.OrganizerID != userIDStr && role != "admin" && role != "super_admin" {
+		c.JSON(http.StatusForbidden, model.ApiResponse{
+			Code: 403, Message: "只能取消自己的预约", Data: nil, RequestID: c.GetString("request_id"),
 		})
 		return
 	}
@@ -347,6 +372,8 @@ func (h *Handler) Mine(c *gin.Context) {
 // Checkin POST /api/bookings/:id/checkin
 func (h *Handler) Checkin(c *gin.Context) {
 	id := c.Param("id")
+	userID, _ := c.Get("user_id")
+	userIDStr := userID.(string)
 
 	var booking model.Booking
 	if err := h.db.First(&booking, "id = ?", id).Error; err != nil {
@@ -356,7 +383,51 @@ func (h *Handler) Checkin(c *gin.Context) {
 		return
 	}
 
+	// 状态校验：只有 confirmed 状态可以签到
+	if booking.Status != "confirmed" {
+		c.JSON(http.StatusBadRequest, model.ApiResponse{
+			Code: 400, Message: "当前状态不可签到", Data: nil, RequestID: c.GetString("request_id"),
+		})
+		return
+	}
+
+	// 权限校验：只有组织者或参会人可以签到
+	isAttendee := booking.OrganizerID == userIDStr
+	if !isAttendee {
+		var count int64
+		h.db.Model(&model.Attendee{}).Where("booking_id = ? AND user_id = ?", id, userIDStr).Count(&count)
+		isAttendee = count > 0
+	}
+	if !isAttendee {
+		c.JSON(http.StatusForbidden, model.ApiResponse{
+			Code: 403, Message: "只有会议参与人可以签到", Data: nil, RequestID: c.GetString("request_id"),
+		})
+		return
+	}
+
+	// 时间窗口校验：会议开始前 15 分钟到结束前可签到
 	now := time.Now()
+	if now.Before(booking.StartTime.Add(-15 * time.Minute)) {
+		c.JSON(http.StatusBadRequest, model.ApiResponse{
+			Code: 400, Message: "签到尚未开放，请在会议开始前 15 分钟内签到", Data: nil, RequestID: c.GetString("request_id"),
+		})
+		return
+	}
+	if now.After(booking.EndTime) {
+		c.JSON(http.StatusBadRequest, model.ApiResponse{
+			Code: 400, Message: "会议已结束，无法签到", Data: nil, RequestID: c.GetString("request_id"),
+		})
+		return
+	}
+
+	// 防重复签到
+	if booking.CheckinTime != nil {
+		c.JSON(http.StatusBadRequest, model.ApiResponse{
+			Code: 400, Message: "已签到，无需重复操作", Data: nil, RequestID: c.GetString("request_id"),
+		})
+		return
+	}
+
 	h.db.Model(&booking).Updates(map[string]interface{}{
 		"status":       "checked_in",
 		"checkin_time": now,

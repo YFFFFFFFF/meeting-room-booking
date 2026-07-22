@@ -40,8 +40,8 @@ func Run() {
 		Logger: logger.Default.LogMode(logger.Warn),
 	})
 	if err != nil {
-		log.Printf("⚠️ 数据库连接失败，使用 SQLite 内存模式: %v", err)
-		// Fallback: 使用 SQLite
+		log.Printf("⚠️ 数据库连接失败（%v），尝试本地 fallback", err)
+		// Fallback: 使用本地 PostgreSQL
 		db, err = gorm.Open(postgres.New(postgres.Config{
 			DSN: "host=localhost port=5432 user=postgres dbname=postgres sslmode=disable",
 		}), &gorm.Config{})
@@ -143,7 +143,7 @@ func Run() {
 		api.GET("/stats/export", middleware.AuthRequired(), statsH.Export)
 
 		// 配置
-		configH := confighandler.NewHandler(repo, cache)
+		configH := confighandler.NewHandler(repo, cache, cacheSvc)
 		api.GET("/config/booking-rules", middleware.AuthRequired(), configH.GetBookingRules)
 		api.PUT("/config/booking-rules", middleware.AuthRequired(), middleware.RoleRequired("admin", "super_admin"), configH.UpdateBookingRules)
 		api.GET("/config/floors", middleware.AuthRequired(), configH.GetFloors)
@@ -234,7 +234,9 @@ func seedData(repo *repository.DB) {
 		{ID: "u-015", WecomUserID: "liusi", Name: "刘四", Department: "行政部", Role: "employee", Status: "active", CreatedAt: now, UpdatedAt: now},
 	}
 	for _, u := range users {
-		repo.Create(&u)
+		if err := repo.Create(&u).Error; err != nil {
+			log.Printf("⚠️ seedData: 创建用户 %s 失败: %v", u.Name, err)
+		}
 	}
 
 	// 会议室
@@ -251,7 +253,9 @@ func seedData(repo *repository.DB) {
 		{ID: "room-010", Name: "10F-星空", Floor: "10F", Building: "A栋", Capacity: 8, RoomType: "medium", Status: "active", LocationDesc: "10楼南侧", CreatedAt: now, UpdatedAt: now},
 	}
 	for _, r := range rooms {
-		repo.Create(&r)
+		if err := repo.Create(&r).Error; err != nil {
+			log.Printf("⚠️ seedData: 创建会议室 %s 失败: %v", r.Name, err)
+		}
 	}
 
 	// 设备
@@ -270,7 +274,9 @@ func seedData(repo *repository.DB) {
 		{ID: "eq-012", RoomID: "room-004", Name: "白板", Type: "whiteboard", Status: "available", CreatedAt: now, UpdatedAt: now},
 	}
 	for _, e := range equipments {
-		repo.Create(&e)
+		if err := repo.Create(&e).Error; err != nil {
+			log.Printf("⚠️ seedData: 创建设备 %s 失败: %v", e.Name, err)
+		}
 	}
 
 	// 预约规则
@@ -286,7 +292,9 @@ func seedData(repo *repository.DB) {
 		LargeRoomThreshold:    20,
 		ApprovalTimeoutHours:  24,
 	}
-	repo.Create(&rules)
+	if err := repo.Create(&rules).Error; err != nil {
+		log.Printf("⚠️ seedData: 创建预约规则失败: %v", err)
+	}
 
 	log.Println("✅ 种子数据初始化完成")
 }

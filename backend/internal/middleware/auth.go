@@ -16,6 +16,11 @@ func InitJWTSecret(secret string) {
 	jwtSecret = []byte(secret)
 }
 
+// GetJWTSecret 返回当前 JWT 签名密钥（供 auth handler 签发 token 使用）
+func GetJWTSecret() []byte {
+	return jwtSecret
+}
+
 type Claims struct {
 	UserID   string `json:"user_id"`
 	Role     string `json:"role"`
