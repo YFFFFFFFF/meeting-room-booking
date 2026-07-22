@@ -49,10 +49,10 @@ export default function HomePage() {
     setLoading(true);
     setError('');
     try {
-      const params: Record<string, string | number> = { date: selectedDate };
+      const params: Record<string, string | number | string[]> = { date: selectedDate };
       if (keyword) params.keyword = keyword;
       if (floorFilter) params.floor = floorFilter;
-      equipFilter.forEach((e, i) => { params[`equipment_types`] = equipFilter.join(','); });
+      if (equipFilter.length > 0) params.equipment_types = equipFilter;
 
       const res = await api.get<ApiResponse<MeetingRoom[]>>('/rooms', params);
       if (res.code === 0) {

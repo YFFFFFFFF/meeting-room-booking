@@ -30,6 +30,8 @@ export default function WeComSyncPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ synced: number; failed: number; errors?: string[] } | null>(null);
 
+  const [syncingIds, setSyncingIds] = useState<Set<string>>(new Set());
+
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -65,10 +67,23 @@ export default function WeComSyncPage() {
   }
 
   async function handleSyncOne(eventId: string) {
+    setSyncingIds(prev => new Set(prev).add(eventId));
     try {
       const res = await api.post<ApiResponse<null>>(`/wecom/calendar/sync/${eventId}`);
-      if (res.code === 0) fetchEvents();
-    } catch { /* 静默失败 */ }
+      if (res.code === 0) {
+        fetchEvents();
+      } else {
+        setSyncResult({ synced: 0, failed: 1, errors: [res.message || '同步失败'] });
+      }
+    } catch {
+      setSyncResult({ synced: 0, failed: 1, errors: ['同步请求失败，请稍后重试'] });
+    } finally {
+      setSyncingIds(prev => {
+        const next = new Set(prev);
+        next.delete(eventId);
+        return next;
+      });
+    }
   }
 
   const syncedCount = events.filter(e => e.sync_status === 'synced').length;
@@ -173,14 +188,22 @@ export default function WeComSyncPage() {
                     </td>
                     <td>
                       {evt.sync_status === 'pending' && (
-                        <button className={styles.syncOneBtn} onClick={() => handleSyncOne(evt.id)}>
-                          立即同步
+                        <button
+                          className={styles.syncOneBtn}
+                          onClick={() => handleSyncOne(evt.id)}
+                          disabled={syncingIds.has(evt.id)}
+                        >
+                          {syncingIds.has(evt.id) ? '同步中...' : '立即同步'}
                         </button>
                       )}
                       {evt.sync_status === 'failed' && (
                         <div>
-                          <button className={styles.retryBtn} onClick={() => handleSyncOne(evt.id)}>
-                            重试
+                          <button
+                            className={styles.retryBtn}
+                            onClick={() => handleSyncOne(evt.id)}
+                            disabled={syncingIds.has(evt.id)}
+                          >
+                            {syncingIds.has(evt.id) ? '重试中...' : '重试'}
                           </button>
                           {evt.sync_error && (
                             <div className={styles.errorHint}>{evt.sync_error}</div>

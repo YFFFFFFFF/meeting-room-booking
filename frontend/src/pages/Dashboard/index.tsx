@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, Legend,
+  LineChart, Line, Legend, Cell,
 } from 'recharts';
 import { api } from '../../services/api';
 import type { DashboardData, UtilizationReport, ApiResponse } from '../../types';
@@ -150,7 +150,7 @@ export default function DashboardPage() {
               />
               <Bar dataKey="utilization" name="利用率" radius={[6, 6, 0, 0]} maxBarSize={60}>
                 {dashboard.floor_stats.map((_, i) => (
-                  <rect key={i} fill={COLORS[i % COLORS.length]} />
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
                 ))}
               </Bar>
             </BarChart>

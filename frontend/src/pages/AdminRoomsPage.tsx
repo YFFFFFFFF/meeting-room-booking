@@ -143,6 +143,7 @@ export default function AdminRoomsPage() {
         room_type: form.room_type,
         status: form.status,
         location_desc: form.location_desc.trim(),
+        equipment_ids: form.equipment_ids,
       };
 
       if (editingId) {

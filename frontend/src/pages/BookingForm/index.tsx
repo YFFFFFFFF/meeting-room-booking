@@ -57,6 +57,11 @@ export default function BookingFormPage() {
     if (!selectedRoom) { setError('请选择会议室'); return; }
     if (!title.trim()) { setError('请输入会议标题'); return; }
     if (startTime >= endTime) { setError('结束时间必须晚于开始时间'); return; }
+    if (attendees.length === 0) { setError('请至少添加一位参会人'); return; }
+    if (attendees.length > selectedRoom.capacity) {
+      setError(`参会人数(${attendees.length})超过会议室容量(${selectedRoom.capacity}人)`);
+      return;
+    }
 
     setSubmitting(true);
     setError('');

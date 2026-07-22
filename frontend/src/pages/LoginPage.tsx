@@ -3,7 +3,7 @@
 // ============================================================
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../hooks/useAuth';
 import styles from './LoginPage.module.css';
 
@@ -22,13 +22,16 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const login = useAuthStore(s => s.login);
   const navigate = useNavigate();
+  const location = useLocation();
 
   async function handleLogin(userId: string) {
     setLoading(true);
     setError('');
     try {
       await login(userId);
-      navigate('/', { replace: true });
+      const from = (location.state as { from?: Location })?.from;
+      const to = from ? `${from.pathname}${from.search}${from.hash}` : '/';
+      navigate(to, { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : '登录失败');
     } finally {

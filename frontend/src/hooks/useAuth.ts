@@ -43,11 +43,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           set({ user: res.data, isLoading: false });
           return;
         }
+        // Token 无效，清除并重置状态
       } catch {
-        localStorage.removeItem('auth_tokens');
+        // 网络错误等，也清除
       }
+      localStorage.removeItem('auth_tokens');
+      set({ user: null, tokens: null, isAuthenticated: false });
     }
-    set({ isLoading: false, isAuthenticated: false });
+    set({ isLoading: false });
   },
 
   loginViaWeCom: async (code?: string) => {

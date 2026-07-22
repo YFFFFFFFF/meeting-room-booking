@@ -72,16 +72,22 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
         });
         if (refreshRes.ok) {
           const refreshData = await refreshRes.json();
-          if (refreshData.code === 0) {
+          if (refreshData.code === 0 && refreshData.data?.access_token) {
             localStorage.setItem('auth_tokens', JSON.stringify(refreshData.data));
             // 重试原请求
             reqHeaders['Authorization'] = `Bearer ${refreshData.data.access_token}`;
             const retryRes = await fetch(url, { ...config, headers: reqHeaders });
+            if (retryRes.status === 401) {
+              // 刷新后的 token 仍然 401，清除并跳转
+              localStorage.removeItem('auth_tokens');
+              window.location.href = '/login';
+              throw new Error('登录已过期，请重新登录');
+            }
             return retryRes.json();
           }
         }
       } catch {
-        // 刷新失败，继续抛出 401
+        // 刷新请求本身失败（网络错误等），继续走下面的 401 处理
       }
     }
     localStorage.removeItem('auth_tokens');
